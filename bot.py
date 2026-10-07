@@ -1,14 +1,22 @@
 import os
 import asyncio
+import logging
 
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import CommandStart
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.types import KeyboardButton
 
+
+# =========================
+# SOZLAMALAR
+# =========================
 
 TOKEN = os.getenv("BOT_TOKEN")
+
+logging.basicConfig(level=logging.INFO)
 
 dp = Dispatcher()
 
@@ -17,23 +25,22 @@ dp = Dispatcher()
 # HOLATLAR
 # =========================
 
-class PassengerOrder(StatesGroup):
-    waiting_location = State()
-    waiting_route = State()
-    waiting_passengers = State()
-    waiting_price = State()
-    confirmation = State()
+class TaxiStates(StatesGroup):
+    location = State()
+    route = State()
+    price = State()
+    confirm = State()
 
 
-class DeliveryOrder(StatesGroup):
-    waiting_location = State()
-    waiting_route = State()
-    waiting_price = State()
-    confirmation = State()
+class DeliveryStates(StatesGroup):
+    location = State()
+    route = State()
+    price = State()
+    confirm = State()
 
 
-class SupportState(StatesGroup):
-    waiting_message = State()
+class SupportStates(StatesGroup):
+    message = State()
 
 
 # =========================
@@ -41,19 +48,20 @@ class SupportState(StatesGroup):
 # =========================
 
 def main_menu():
-    builder = ReplyKeyboardBuilder()
 
-    builder.button(text="👤 YO‘LOVCHI")
-    builder.button(text="🚕 HAYDOVCHI")
-    builder.button(text="📦 DASTAVKA")
-    builder.button(text="📩 TAKLIF VA MUROJAATLAR")
-    builder.button(text="🌐 TIL")
+    kb = ReplyKeyboardBuilder()
 
-    builder.adjust(2, 2, 1)
+    kb.button(text="👤 YO‘LOVCHI")
+    kb.button(text="🚕 HAYDOVCHI")
 
-    return builder.as_markup(
-        resize_keyboard=True
-    )
+    kb.button(text="📦 DASTAVKA")
+    kb.button(text="📩 TAKLIF VA MUROJAATLAR")
+
+    kb.button(text="🌐 TIL")
+
+    kb.adjust(2, 2, 1)
+
+    return kb.as_markup(resize_keyboard=True)
 
 
 # =========================
@@ -61,524 +69,164 @@ def main_menu():
 # =========================
 
 def passenger_menu():
-    builder = ReplyKeyboardBuilder()
 
-    builder.button(text="🚕 TAKSI BUYURTMA QILISH")
-    builder.button(text="📜 BUYURTMALAR TARIXI")
-    builder.button(text="👤 PROFIL")
-    builder.button(text="↩️ ORQAGA")
+    kb = ReplyKeyboardBuilder()
 
-    builder.adjust(1, 2, 1)
+    kb.button(text="🚕 TAKSI BUYURTMA QILISH")
+    kb.button(text="📜 BUYURTMALAR TARIXI")
 
-    return builder.as_markup(
-        resize_keyboard=True
-    )
+    kb.button(text="👤 PROFIL")
+    kb.button(text="⬅️ ORQAGA")
 
+    kb.adjust(1, 2, 1)
 
-# =========================
-# GPS TUGMASI
-# =========================
-
-def location_keyboard():
-    builder = ReplyKeyboardBuilder()
-
-    builder.button(
-        text="📍 JOYLASHUVIMNI YUBORISH",
-        request_location=True
-    )
-
-    builder.button(text="↩️ ORQAGA")
-
-    builder.adjust(1, 1)
-
-    return builder.as_markup(
-        resize_keyboard=True
-    )
+    return kb.as_markup(resize_keyboard=True)
 
 
 # =========================
-# YO‘LOVCHILAR SONI
+# HAYDOVCHI MENYUSI
 # =========================
 
-def passenger_count_keyboard():
-    builder = ReplyKeyboardBuilder()
+def driver_menu():
 
-    for number in range(1, 8):
-        builder.button(text=f"👤 {number}")
+    kb = ReplyKeyboardBuilder()
 
-    builder.button(text="↩️ ORQAGA")
+    kb.button(text="🟢 ONLINE")
+    kb.button(text="⚪ OFFLINE")
 
-    builder.adjust(4, 3, 1)
+    kb.button(text="📋 YANGI BUYURTMALAR")
+    kb.button(text="🚕 FAOL BUYURTMALAR")
 
-    return builder.as_markup(
-        resize_keyboard=True
+    kb.button(text="📜 BUYURTMALAR TARIXI")
+    kb.button(text="💰 DAROMAD")
+
+    kb.button(text="⭐ REYTING")
+    kb.button(text="👤 PROFIL")
+
+    kb.button(text="⬅️ ORQAGA")
+
+    kb.adjust(2, 2, 2, 2, 1)
+
+    return kb.as_markup(resize_keyboard=True)
+
+
+# =========================
+# JOYLASHUV TUGMASI
+# =========================
+
+def location_menu():
+
+    kb = ReplyKeyboardBuilder()
+
+    kb.add(
+        KeyboardButton(
+            text="📍 JOYLASHUVNI YUBORISH",
+            request_location=True
+        )
     )
+
+    kb.button(text="⬅️ ORQAGA")
+
+    kb.adjust(1, 1)
+
+    return kb.as_markup(resize_keyboard=True)
+
+
+# =========================
+# ORQAGA
+# =========================
+
+def back_menu():
+
+    kb = ReplyKeyboardBuilder()
+
+    kb.button(text="⬅️ ORQAGA")
+
+    return kb.as_markup(resize_keyboard=True)
 
 
 # =========================
 # TASDIQLASH
 # =========================
 
-def confirmation_keyboard():
-    builder = ReplyKeyboardBuilder()
+def confirm_menu():
 
-    builder.button(text="✅ BUYURTMA BERISH")
-    builder.button(text="✏️ O‘ZGARTIRISH")
-    builder.button(text="❌ BEKOR QILISH")
+    kb = ReplyKeyboardBuilder()
 
-    builder.adjust(1)
+    kb.button(text="✅ BUYURTMA BERISH")
+    kb.button(text="✏️ O‘ZGARTIRISH")
+    kb.button(text="❌ BEKOR QILISH")
 
-    return builder.as_markup(
-        resize_keyboard=True
-    )
+    kb.adjust(1, 2)
+
+    return kb.as_markup(resize_keyboard=True)
 
 
-# =========================
-# /START
-# =========================
+# ==========================================================
+# START
+# ==========================================================
 
 @dp.message(CommandStart())
 async def start(message: types.Message, state: FSMContext):
 
     await state.clear()
 
-    text = (
+    await message.answer(
         "🚕 <b>TAXI BOR MI? — ALBATTA BOR!</b>\n\n"
         "📍 <b>OBLIQ ↔ ANGGREN</b>\n\n"
         "Xush kelibsiz!\n\n"
-        "Kerakli bo‘limni tanlang:"
-    )
-
-    await message.answer(
-        text,
+        "Kerakli bo‘limni tanlang:",
         parse_mode="HTML",
         reply_markup=main_menu()
     )
 
 
-# =========================
+# ==========================================================
 # YO‘LOVCHI
-# =========================
+# ==========================================================
 
 @dp.message(F.text == "👤 YO‘LOVCHI")
 async def passenger(message: types.Message, state: FSMContext):
 
     await state.clear()
 
-    text = (
+    await message.answer(
         "👤 <b>YO‘LOVCHI</b>\n\n"
         "🚕 Taksi buyurtma qilish\n"
         "📜 Buyurtmalar tarixi\n"
         "👤 Profil\n\n"
-        "Kerakli xizmatni tanlang:"
-    )
-
-    await message.answer(
-        text,
+        "Kerakli xizmatni tanlang:",
         parse_mode="HTML",
         reply_markup=passenger_menu()
     )
 
 
-# =========================
-# TAKSI BUYURTMA BOSHLASH
-# =========================
+# ==========================================================
+# TAKSI BUYURTMA
+# ==========================================================
 
 @dp.message(F.text == "🚕 TAKSI BUYURTMA QILISH")
-async def start_taxi_order(
-    message: types.Message,
-    state: FSMContext
-):
+async def taxi_start(message: types.Message, state: FSMContext):
 
-    await state.set_state(
-        PassengerOrder.waiting_location
-    )
+    await state.clear()
 
-    text = (
+    await state.set_state(TaxiStates.location)
+
+    await message.answer(
         "🚕 <b>TAKSI BUYURTMA QILISH</b>\n\n"
-        "📍 Yo‘nalish: <b>OBLIQ ↔ ANGGREN</b>\n\n"
-        "Avval joylashuvingizni yuboring.\n\n"
-        "👇 Pastdagi tugmani bosing:"
-    )
-
-    await message.answer(
-        text,
+        "📍 Avval joylashuvingizni yuboring.\n\n"
+        "Joylashuv tugmasini bosing.",
         parse_mode="HTML",
-        reply_markup=location_keyboard()
+        reply_markup=location_menu()
     )
 
 
-# =========================
-# GPS QABUL QILISH
-# =========================
-
-@dp.message(
-    PassengerOrder.waiting_location,
-    F.location
-)
-async def passenger_location(
-    message: types.Message,
-    state: FSMContext
-):
-
-    location = message.location
-
-    await state.update_data(
-        latitude=location.latitude,
-        longitude=location.longitude
-    )
-
-    await state.set_state(
-        PassengerOrder.waiting_route
-    )
-
-    text = (
-        "✅ <b>Joylashuvingiz qabul qilindi.</b>\n\n"
-        "Endi safar manzilini yozing:\n\n"
-        "📍 <b>Qayerdan → 🏁 Qayerga</b>\n\n"
-        "Masalan:\n"
-        "<code>Versal Dreams → Xakkarmon</code>\n\n"
-        "Yoki:\n"
-        "<code>Obliqdan Angren markaziga</code>"
-    )
-
-    await message.answer(
-        text,
-        parse_mode="HTML"
-    )
-
-
-# =========================
-# QAYERDAN → QAYERGA
-# =========================
-
-@dp.message(
-    PassengerOrder.waiting_route,
-    F.text
-)
-async def passenger_route(
-    message: types.Message,
-    state: FSMContext
-):
-
-    if message.text == "↩️ ORQAGA":
-
-        await state.clear()
-
-        await message.answer(
-            "Asosiy menyu:",
-            reply_markup=main_menu()
-        )
-
-        return
-
-    route = message.text.strip()
-
-    if len(route) < 3:
-
-        await message.answer(
-            "⚠️ Iltimos, qayerdan va qayerga borishingizni yozing.\n\n"
-            "Masalan:\n"
-            "Versal Dreams → Xakkarmon"
-        )
-
-        return
-
-    await state.update_data(
-        route=route
-    )
-
-    await state.set_state(
-        PassengerOrder.waiting_passengers
-    )
-
-    await message.answer(
-        "👥 Necha kishi boradi?\n\n"
-        "1 dan 7 kishigacha tanlang:",
-        reply_markup=passenger_count_keyboard()
-    )
-
-
-# =========================
-# YO‘LOVCHILAR SONI
-# =========================
-
-@dp.message(
-    PassengerOrder.waiting_passengers,
-    F.text
-)
-async def passenger_count(
-    message: types.Message,
-    state: FSMContext
-):
-
-    text = message.text
-
-    if text == "↩️ ORQAGA":
-
-        await state.clear()
-
-        await message.answer(
-            "Asosiy menyu:",
-            reply_markup=main_menu()
-        )
-
-        return
-
-    if not text.startswith("👤"):
-
-        await message.answer(
-            "⚠️ Iltimos, 1–7 kishidan birini tanlang."
-        )
-
-        return
-
-    try:
-        count = int(
-            text.replace("👤", "").strip()
-        )
-    except ValueError:
-
-        await message.answer(
-            "⚠️ Noto‘g‘ri tanlov."
-        )
-
-        return
-
-    await state.update_data(
-        passengers=count
-    )
-
-    await state.set_state(
-        PassengerOrder.waiting_price
-    )
-
-    await message.answer(
-        "💰 <b>Safar narxini kiriting.</b>\n\n"
-        "Masalan:\n"
-        "<code>30000</code>\n\n"
-        "Faqat so‘m miqdorini yozing.",
-        parse_mode="HTML"
-    )
-
-
-# =========================
-# NARX
-# =========================
-
-@dp.message(
-    PassengerOrder.waiting_price,
-    F.text
-)
-async def passenger_price(
-    message: types.Message,
-    state: FSMContext
-):
-
-    if message.text == "↩️ ORQAGA":
-
-        await state.clear()
-
-        await message.answer(
-            "Asosiy menyu:",
-            reply_markup=main_menu()
-        )
-
-        return
-
-    price_text = message.text.replace(
-        " ", ""
-    ).replace(
-        ",", ""
-    )
-
-    if not price_text.isdigit():
-
-        await message.answer(
-            "⚠️ Narxni faqat raqam bilan kiriting.\n\n"
-            "Masalan: <code>30000</code>",
-            parse_mode="HTML"
-        )
-
-        return
-
-    price = int(price_text)
-
-    if price <= 0:
-
-        await message.answer(
-            "⚠️ Narx 0 dan katta bo‘lishi kerak."
-        )
-
-        return
-
-    data = await state.get_data()
-
-    await state.update_data(
-        price=price
-    )
-
-    await state.set_state(
-        PassengerOrder.confirmation
-    )
-
-    confirmation = (
-        "🚕 <b>BUYURTMA</b>\n\n"
-        f"📍 <b>Yo‘nalish:</b> {data.get('route')}\n"
-        f"👥 <b>Yo‘lovchilar:</b> {data.get('passengers')} kishi\n"
-        f"💰 <b>Narx:</b> {price:,} so‘m\n\n"
-        "Buyurtmani tasdiqlaysizmi?"
-    )
-
-    await message.answer(
-        confirmation,
-        parse_mode="HTML",
-        reply_markup=confirmation_keyboard()
-    )
-
-
-# =========================
-# BUYURTMA TASDIQLASH
-# =========================
-
-@dp.message(
-    PassengerOrder.confirmation,
-    F.text == "✅ BUYURTMA BERISH"
-)
-async def confirm_order(
-    message: types.Message,
-    state: FSMContext
-):
-
-    data = await state.get_data()
-
-    order_text = (
-        "✅ <b>BUYURTMANGIZ QABUL QILINDI!</b>\n\n"
-        f"📍 {data.get('route')}\n"
-        f"👥 {data.get('passengers')} kishi\n"
-        f"💰 {data.get('price'):,} so‘m\n\n"
-        "🔎 Haydovchi qidirilmoqda...\n\n"
-        "🚕 Tez orada haydovchi topiladi."
-    )
-
-    await message.answer(
-        order_text,
-        parse_mode="HTML",
-        reply_markup=main_menu()
-    )
-
-    await state.clear()
-
-
-# =========================
-# O‘ZGARTIRISH
-# =========================
-
-@dp.message(
-    PassengerOrder.confirmation,
-    F.text == "✏️ O‘ZGARTIRISH"
-)
-async def edit_order(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await state.set_state(
-        PassengerOrder.waiting_route
-    )
-
-    await message.answer(
-        "✏️ Yangi yo‘nalishni kiriting:\n\n"
-        "Masalan:\n"
-        "<code>Versal Dreams → Xakkarmon</code>",
-        parse_mode="HTML"
-    )
-
-
-# =========================
-# BEKOR QILISH
-# =========================
-
-@dp.message(
-    PassengerOrder.confirmation,
-    F.text == "❌ BEKOR QILISH"
-)
-async def cancel_order(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await state.clear()
-
-    await message.answer(
-        "❌ Buyurtma bekor qilindi.",
-        reply_markup=main_menu()
-    )
-
-
-# =========================
-# BUYURTMALAR TARIXI
-# =========================
-
-@dp.message(F.text == "📜 BUYURTMALAR TARIXI")
-async def history(message: types.Message):
-
-    await message.answer(
-        "📜 <b>BUYURTMALAR TARIXI</b>\n\n"
-        "Hozircha buyurtmalar tarixi bo‘sh.",
-        parse_mode="HTML"
-    )
-
-
-# =========================
-# PROFIL
-# =========================
-
-@dp.message(F.text == "👤 PROFIL")
-async def profile(message: types.Message):
-
-    await message.answer(
-        "👤 <b>PROFIL</b>\n\n"
-        f"Ism: {message.from_user.full_name}\n"
-        f"Telegram ID: <code>{message.from_user.id}</code>\n\n"
-        "📱 Telefon raqami keyingi bosqichda qo‘shiladi.",
-        parse_mode="HTML"
-    )
-
-
-# =========================
-# DASTAVKA
-# =========================
-
-@dp.message(F.text == "📦 DASTAVKA")
-async def delivery(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await state.clear()
-
-    await state.set_state(
-        DeliveryOrder.waiting_location
-    )
-
-    await message.answer(
-        "📦 <b>DASTAVKA</b>\n\n"
-        "📍 Avval joylashuvingizni yuboring:",
-        parse_mode="HTML",
-        reply_markup=location_keyboard()
-    )
-
-
-# =========================
-# DASTAVKA GPS
-# =========================
-
-@dp.message(
-    DeliveryOrder.waiting_location,
-    F.location
-)
-async def delivery_location(
+# ==========================================================
+# TAKSI JOYLASHUV
+# ==========================================================
+
+@dp.message(TaxiStates.location, F.location)
+async def taxi_location(
     message: types.Message,
     state: FSMContext
 ):
@@ -588,33 +236,30 @@ async def delivery_location(
         longitude=message.location.longitude
     )
 
-    await state.set_state(
-        DeliveryOrder.waiting_route
-    )
+    await state.set_state(TaxiStates.route)
 
     await message.answer(
-        "✅ Joylashuv qabul qilindi.\n\n"
-        "📍 <b>Qayerdan → 🏁 Qayerga</b>\n\n"
+        "✅ Joylashuvingiz qabul qilindi.\n\n"
+        "Endi yo‘nalishni yozing:\n\n"
+        "📍 Qayerdan → 🏁 Qayerga\n\n"
         "Masalan:\n"
-        "<code>Obliq → Angren markazi</code>",
-        parse_mode="HTML"
+        "<b>Versal Dreams → Xakkarmon</b>",
+        parse_mode="HTML",
+        reply_markup=back_menu()
     )
 
 
-# =========================
-# DASTAVKA YO‘NALISHI
-# =========================
+# ==========================================================
+# TAKSI YO‘NALISH
+# ==========================================================
 
-@dp.message(
-    DeliveryOrder.waiting_route,
-    F.text
-)
-async def delivery_route(
+@dp.message(TaxiStates.route)
+async def taxi_route(
     message: types.Message,
     state: FSMContext
 ):
 
-    if message.text == "↩️ ORQAGA":
+    if message.text == "⬅️ ORQAGA":
 
         await state.clear()
 
@@ -629,98 +274,384 @@ async def delivery_route(
         route=message.text
     )
 
-    await state.set_state(
-        DeliveryOrder.waiting_price
-    )
+    await state.set_state(TaxiStates.price)
 
     await message.answer(
-        "💰 Dastavka narxini kiriting.\n\n"
-        "Masalan: <code>30000</code>",
-        parse_mode="HTML"
+        "💰 <b>Narxni kiriting</b>\n\n"
+        "Masalan:\n"
+        "<b>30000</b>",
+        parse_mode="HTML",
+        reply_markup=back_menu()
     )
 
 
-# =========================
-# DASTAVKA NARXI
-# =========================
+# ==========================================================
+# TAKSI NARX
+# ==========================================================
 
-@dp.message(
-    DeliveryOrder.waiting_price,
-    F.text
-)
-async def delivery_price(
+@dp.message(TaxiStates.price)
+async def taxi_price(
     message: types.Message,
     state: FSMContext
 ):
 
-    price_text = message.text.replace(
-        " ", ""
-    ).replace(",", "")
+    if message.text == "⬅️ ORQAGA":
+
+        await state.clear()
+
+        await message.answer(
+            "Asosiy menyu:",
+            reply_markup=main_menu()
+        )
+
+        return
+
+    price_text = message.text.replace(" ", "").replace(",", "")
 
     if not price_text.isdigit():
 
         await message.answer(
-            "⚠️ Narxni faqat raqam bilan kiriting.\n"
-            "Masalan: 30000"
+            "❗ Narxni faqat raqam bilan kiriting.\n\n"
+            "Masalan: <b>30000</b>",
+            parse_mode="HTML"
         )
 
         return
 
     price = int(price_text)
 
-    data = await state.get_data()
+    if price < 1000 or price > 10000000:
+
+        await message.answer(
+            "❗ Narx 1 000 dan 10 000 000 so‘mgacha bo‘lishi kerak."
+        )
+
+        return
 
     await state.update_data(
         price=price
     )
 
-    await state.set_state(
-        DeliveryOrder.confirmation
-    )
+    data = await state.get_data()
+
+    await state.set_state(TaxiStates.confirm)
 
     await message.answer(
-        "📦 <b>DASTAVKA BUYURTMASI</b>\n\n"
-        f"📍 {data.get('route')}\n"
-        f"💰 {price:,} so‘m\n\n"
-        "Buyurtmani berasizmi?",
+        "🚕 <b>BUYURTMA</b>\n\n"
+        f"📍 Yo‘nalish:\n"
+        f"<b>{data['route']}</b>\n\n"
+        f"💰 Narx:\n"
+        f"<b>{price:,} so‘m</b>\n\n"
+        "Buyurtmani tasdiqlaysizmi?",
         parse_mode="HTML",
-        reply_markup=confirmation_keyboard()
+        reply_markup=confirm_menu()
     )
 
 
-# =========================
-# DASTAVKA TASDIQLASH
-# =========================
+# ==========================================================
+# TAKSI TASDIQLASH
+# ==========================================================
 
 @dp.message(
-    DeliveryOrder.confirmation,
+    TaxiStates.confirm,
     F.text == "✅ BUYURTMA BERISH"
 )
-async def confirm_delivery(
+async def taxi_confirm(
     message: types.Message,
     state: FSMContext
 ):
 
     data = await state.get_data()
 
+    await state.clear()
+
     await message.answer(
-        "✅ <b>DASTAVKA BUYURTMASI QABUL QILINDI!</b>\n\n"
-        f"📍 {data.get('route')}\n"
-        f"💰 {data.get('price'):,} so‘m\n\n"
-        "🔎 Haydovchi qidirilmoqda...",
+        "✅ <b>BUYURTMANGIZ QABUL QILINDI!</b>\n\n"
+        f"📍 {data['route']}\n"
+        f"💰 {data['price']:,} so‘m\n\n"
+        "🚕 Haydovchi qidirilmoqda...\n\n"
+        "Hozircha tizim demo rejimida ishlamoqda.",
         parse_mode="HTML",
         reply_markup=main_menu()
     )
 
+
+# ==========================================================
+# TAKSI BEKOR
+# ==========================================================
+
+@dp.message(
+    TaxiStates.confirm,
+    F.text == "❌ BEKOR QILISH"
+)
+async def taxi_cancel(
+    message: types.Message,
+    state: FSMContext
+):
+
     await state.clear()
 
+    await message.answer(
+        "❌ Buyurtma bekor qilindi.",
+        reply_markup=main_menu()
+    )
 
-# =========================
+
+# ==========================================================
+# TAKSI O‘ZGARTIRISH
+# ==========================================================
+
+@dp.message(
+    TaxiStates.confirm,
+    F.text == "✏️ O‘ZGARTIRISH"
+)
+async def taxi_edit(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.set_state(TaxiStates.route)
+
+    await message.answer(
+        "✏️ Yo‘nalishni qaytadan kiriting:\n\n"
+        "📍 Qayerdan → 🏁 Qayerga",
+        reply_markup=back_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA
+# ==========================================================
+
+@dp.message(F.text == "📦 DASTAVKA")
+async def delivery_start(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.clear()
+
+    await state.set_state(DeliveryStates.location)
+
+    await message.answer(
+        "📦 <b>DASTAVKA</b>\n\n"
+        "📍 Avval joylashuvingizni yuboring.",
+        parse_mode="HTML",
+        reply_markup=location_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA JOYLASHUV
+# ==========================================================
+
+@dp.message(
+    DeliveryStates.location,
+    F.location
+)
+async def delivery_location(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.update_data(
+        latitude=message.location.latitude,
+        longitude=message.location.longitude
+    )
+
+    await state.set_state(DeliveryStates.route)
+
+    await message.answer(
+        "✅ Joylashuvingiz qabul qilindi.\n\n"
+        "📍 Qayerdan → 🏁 Qayerga manzilini yozing.\n\n"
+        "Masalan:\n"
+        "<b>Obliq → Angren markazi</b>",
+        parse_mode="HTML",
+        reply_markup=back_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA YO‘NALISH
+# ==========================================================
+
+@dp.message(DeliveryStates.route)
+async def delivery_route(
+    message: types.Message,
+    state: FSMContext
+):
+
+    if message.text == "⬅️ ORQAGA":
+
+        await state.clear()
+
+        await message.answer(
+            "Asosiy menyu:",
+            reply_markup=main_menu()
+        )
+
+        return
+
+    await state.update_data(
+        route=message.text
+    )
+
+    await state.set_state(DeliveryStates.price)
+
+    await message.answer(
+        "💰 Dastavka narxini kiriting.\n\n"
+        "Masalan:\n"
+        "<b>30000</b>",
+        parse_mode="HTML",
+        reply_markup=back_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA NARX
+# ==========================================================
+
+@dp.message(DeliveryStates.price)
+async def delivery_price(
+    message: types.Message,
+    state: FSMContext
+):
+
+    if message.text == "⬅️ ORQAGA":
+
+        await state.clear()
+
+        await message.answer(
+            "Asosiy menyu:",
+            reply_markup=main_menu()
+        )
+
+        return
+
+    price_text = message.text.replace(" ", "").replace(",", "")
+
+    if not price_text.isdigit():
+
+        await message.answer(
+            "❗ Narxni faqat raqam bilan kiriting.\n\n"
+            "Masalan: <b>30000</b>",
+            parse_mode="HTML"
+        )
+
+        return
+
+    price = int(price_text)
+
+    if price < 1000 or price > 10000000:
+
+        await message.answer(
+            "❗ Narx 1 000 dan 10 000 000 so‘mgacha bo‘lishi kerak."
+        )
+
+        return
+
+    await state.update_data(
+        price=price
+    )
+
+    data = await state.get_data()
+
+    await state.set_state(DeliveryStates.confirm)
+
+    await message.answer(
+        "📦 <b>DASTAVKA BUYURTMASI</b>\n\n"
+        f"📍 Yo‘nalish:\n"
+        f"<b>{data['route']}</b>\n\n"
+        f"💰 Narx:\n"
+        f"<b>{price:,} so‘m</b>\n\n"
+        "Tasdiqlaysizmi?",
+        parse_mode="HTML",
+        reply_markup=confirm_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA TASDIQLASH
+# ==========================================================
+
+@dp.message(
+    DeliveryStates.confirm,
+    F.text == "✅ BUYURTMA BERISH"
+)
+async def delivery_confirm(
+    message: types.Message,
+    state: FSMContext
+):
+
+    data = await state.get_data()
+
+    await state.clear()
+
+    await message.answer(
+        "✅ <b>DASTAVKA BUYURTMASI QABUL QILINDI!</b>\n\n"
+        f"📍 {data['route']}\n"
+        f"💰 {data['price']:,} so‘m\n\n"
+        "🚕 Haydovchi qidirilmoqda...\n\n"
+        "Hozircha tizim demo rejimida ishlamoqda.",
+        parse_mode="HTML",
+        reply_markup=main_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA BEKOR
+# ==========================================================
+
+@dp.message(
+    DeliveryStates.confirm,
+    F.text == "❌ BEKOR QILISH"
+)
+async def delivery_cancel(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.clear()
+
+    await message.answer(
+        "❌ Dastavka buyurtmasi bekor qilindi.",
+        reply_markup=main_menu()
+    )
+
+
+# ==========================================================
+# DASTAVKA O‘ZGARTIRISH
+# ==========================================================
+
+@dp.message(
+    DeliveryStates.confirm,
+    F.text == "✏️ O‘ZGARTIRISH"
+)
+async def delivery_edit(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.set_state(DeliveryStates.route)
+
+    await message.answer(
+        "✏️ Yo‘nalishni qaytadan kiriting:\n\n"
+        "📍 Qayerdan → 🏁 Qayerga",
+        reply_markup=back_menu()
+    )
+
+
+# ==========================================================
 # HAYDOVCHI
-# =========================
+# ==========================================================
 
 @dp.message(F.text == "🚕 HAYDOVCHI")
-async def driver(message: types.Message):
+async def driver(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await state.clear()
 
     await message.answer(
         "🚕 <b>HAYDOVCHI PANELI</b>\n\n"
@@ -732,101 +663,260 @@ async def driver(message: types.Message):
         "💰 Daromad\n"
         "⭐ Reyting\n"
         "👤 Profil\n\n"
-        "🚧 Haydovchini ro‘yxatdan o‘tkazish "
-        "keyingi bosqichda qo‘shiladi.",
+        "Kerakli bo‘limni tanlang:",
+        parse_mode="HTML",
+        reply_markup=driver_menu()
+    )
+
+
+# ==========================================================
+# HAYDOVCHI ONLINE
+# ==========================================================
+
+@dp.message(F.text == "🟢 ONLINE")
+async def driver_online(message: types.Message):
+
+    await message.answer(
+        "🟢 <b>ONLINE</b>\n\n"
+        "Siz buyurtmalarni qabul qilishga tayyorsiz.",
+        parse_mode="HTML",
+        reply_markup=driver_menu()
+    )
+
+
+# ==========================================================
+# HAYDOVCHI OFFLINE
+# ==========================================================
+
+@dp.message(F.text == "⚪ OFFLINE")
+async def driver_offline(message: types.Message):
+
+    await message.answer(
+        "⚪ <b>OFFLINE</b>\n\n"
+        "Siz hozir buyurtma qabul qilmaysiz.",
+        parse_mode="HTML",
+        reply_markup=driver_menu()
+    )
+
+
+# ==========================================================
+# YANGI BUYURTMALAR
+# ==========================================================
+
+@dp.message(F.text == "📋 YANGI BUYURTMALAR")
+async def new_orders(message: types.Message):
+
+    await message.answer(
+        "📋 <b>YANGI BUYURTMALAR</b>\n\n"
+        "Hozircha yangi buyurtmalar mavjud emas.",
         parse_mode="HTML"
     )
 
 
-# =========================
+# ==========================================================
+# FAOL BUYURTMALAR
+# ==========================================================
+
+@dp.message(F.text == "🚕 FAOL BUYURTMALAR")
+async def active_orders(message: types.Message):
+
+    await message.answer(
+        "🚕 <b>FAOL BUYURTMALAR</b>\n\n"
+        "Hozircha faol buyurtmalar yo‘q.",
+        parse_mode="HTML"
+    )
+
+
+# ==========================================================
+# TARIX
+# ==========================================================
+
+@dp.message(F.text == "📜 BUYURTMALAR TARIXI")
+async def history(message: types.Message):
+
+    await message.answer(
+        "📜 <b>BUYURTMALAR TARIXI</b>\n\n"
+        "Hozircha tarix bo‘sh.",
+        parse_mode="HTML"
+    )
+
+
+# ==========================================================
+# DAROMAD
+# ==========================================================
+
+@dp.message(F.text == "💰 DAROMAD")
+async def income(message: types.Message):
+
+    await message.answer(
+        "💰 <b>DAROMAD</b>\n\n"
+        "Bugungi daromad: <b>0 so‘m</b>",
+        parse_mode="HTML"
+    )
+
+
+# ==========================================================
+# REYTING
+# ==========================================================
+
+@dp.message(F.text == "⭐ REYTING")
+async def rating(message: types.Message):
+
+    await message.answer(
+        "⭐ <b>REYTING</b>\n\n"
+        "Hozircha reyting mavjud emas.",
+        parse_mode="HTML"
+    )
+
+
+# ==========================================================
+# PROFIL
+# ==========================================================
+
+@dp.message(F.text == "👤 PROFIL")
+async def profile(message: types.Message):
+
+    await message.answer(
+        "👤 <b>PROFIL</b>\n\n"
+        f"Ism: <b>{message.from_user.full_name}</b>\n"
+        f"Telegram ID: <code>{message.from_user.id}</code>",
+        parse_mode="HTML"
+    )
+
+
+# ==========================================================
 # TAKLIF VA MUROJAATLAR
-# =========================
+# ==========================================================
 
 @dp.message(F.text == "📩 TAKLIF VA MUROJAATLAR")
-async def support(
+async def support_start(
     message: types.Message,
     state: FSMContext
 ):
 
-    await state.set_state(
-        SupportState.waiting_message
-    )
+    await state.clear()
+
+    await state.set_state(SupportStates.message)
 
     await message.answer(
         "📩 <b>TAKLIF VA MUROJAATLAR</b>\n\n"
         "Taklifingiz, savolingiz, shikoyatingiz "
-        "yoki muammoingizni yozing.\n\n"
-        "✍️ Xabaringizni yuboring:",
-        parse_mode="HTML"
+        "yoki muammoingizni yozing:",
+        parse_mode="HTML",
+        reply_markup=back_menu()
     )
 
 
-@dp.message(
-    SupportState.waiting_message,
-    F.text
-)
+@dp.message(SupportStates.message)
 async def support_message(
     message: types.Message,
     state: FSMContext
 ):
 
-    await message.answer(
-        "✅ Murojaatingiz qabul qilindi.\n\n"
-        "📩 Rahmat! Administrator ko‘rib chiqadi.",
-        reply_markup=main_menu()
-    )
+    if message.text == "⬅️ ORQAGA":
+
+        await state.clear()
+
+        await message.answer(
+            "Asosiy menyu:",
+            reply_markup=main_menu()
+        )
+
+        return
+
+    ticket = f"MR-{message.from_user.id}-{message.message_id}"
 
     await state.clear()
 
+    await message.answer(
+        "✅ <b>Murojaatingiz qabul qilindi!</b>\n\n"
+        f"🎫 Murojaat raqami: <code>{ticket}</code>\n\n"
+        "Rahmat.",
+        parse_mode="HTML",
+        reply_markup=main_menu()
+    )
 
-# =========================
+
+# ==========================================================
 # TIL
-# =========================
+# ==========================================================
 
 @dp.message(F.text == "🌐 TIL")
 async def language(message: types.Message):
 
+    kb = ReplyKeyboardBuilder()
+
+    kb.button(text="🇺🇿 O‘zbekcha")
+    kb.button(text="🇺🇿 Ўзбекча")
+    kb.button(text="🇷🇺 Русский")
+    kb.button(text="🇬🇧 English")
+    kb.button(text="⬅️ ORQAGA")
+
+    kb.adjust(2, 2, 1)
+
     await message.answer(
-        "🌐 <b>TILNI TANLANG</b>\n\n"
-        "🇺🇿 O‘zbekcha\n"
-        "🇺🇿 Ўзбекча\n"
-        "🇷🇺 Русский\n"
-        "🇬🇧 English\n\n"
-        "⚙️ Ko‘p tilli tizim keyingi bosqichda "
-        "to‘liq ishga tushiriladi.",
-        parse_mode="HTML"
+        "🌐 <b>TILNI TANLANG</b>",
+        parse_mode="HTML",
+        reply_markup=kb.as_markup(resize_keyboard=True)
     )
 
 
-# =========================
-# ORQAGA
-# =========================
+# ==========================================================
+# TIL TANLANDI
+# ==========================================================
 
-@dp.message(F.text == "↩️ ORQAGA")
+@dp.message(
+    F.text.in_({
+        "🇺🇿 O‘zbekcha",
+        "🇺🇿 Ўзбекча",
+        "🇷🇺 Русский",
+        "🇬🇧 English"
+    })
+)
+async def language_selected(message: types.Message):
+
+    await message.answer(
+        "✅ Til tanlandi.",
+        reply_markup=main_menu()
+    )
+
+
+# ==========================================================
+# ORQAGA
+# ==========================================================
+
+@dp.message(F.text == "⬅️ ORQAGA")
 async def back(message: types.Message, state: FSMContext):
 
     await state.clear()
 
     await message.answer(
-        "🏠 Asosiy menyu:",
+        "Asosiy menyu:",
         reply_markup=main_menu()
     )
 
 
-# =========================
+# ==========================================================
 # BOTNI ISHGA TUSHIRISH
-# =========================
+# ==========================================================
 
 async def main():
 
     if not TOKEN:
+
         raise RuntimeError(
-            "BOT_TOKEN topilmadi. Railway Variables bo‘limiga BOT_TOKEN kiriting."
+            "BOT_TOKEN topilmadi! "
+            "Railway → Variables ichiga BOT_TOKEN qo‘ying."
         )
 
     bot = Bot(token=TOKEN)
 
-    print("🚕 TAXI BOR MI? bot ishga tushdi!")
+    me = await bot.get_me()
+
+    logging.info(
+        "🚕 TAXI BOR MI? ishga tushdi: @%s",
+        me.username
+    )
 
     await dp.start_polling(bot)
 
