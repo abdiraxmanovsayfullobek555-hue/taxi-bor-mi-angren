@@ -3,51 +3,56 @@ import asyncio
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TOKEN = os.getenv("BOT_TOKEN")
 
 dp = Dispatcher()
 
 
-# =========================
-# ASOSIY MENYU
-# =========================
-
 def main_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
             [
-                KeyboardButton(text="👤 YO‘LOVCHI"),
-                KeyboardButton(text="🚕 HAYDOVCHI")
+                InlineKeyboardButton(
+                    text="👤 YO‘LOVCHI",
+                    callback_data="passenger"
+                ),
+                InlineKeyboardButton(
+                    text="🚕 HAYDOVCHI",
+                    callback_data="driver"
+                )
             ],
             [
-                KeyboardButton(text="📦 DASTAVKA"),
-                KeyboardButton(text="📩 TAKLIF VA MUROJAATLAR")
+                InlineKeyboardButton(
+                    text="📦 DASTAVKA",
+                    callback_data="delivery"
+                )
             ],
             [
-                KeyboardButton(text="🌐 TIL")
+                InlineKeyboardButton(
+                    text="📩 TAKLIF VA MUROJAATLAR",
+                    callback_data="support"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🌐 TIL",
+                    callback_data="language"
+                )
             ]
-        ],
-        resize_keyboard=True,
-        is_persistent=True,
-        one_time_keyboard=False
+        ]
     )
 
-
-# =========================
-# START
-# =========================
 
 @dp.message(CommandStart())
 async def start(message: types.Message):
 
     text = (
         "🚕 <b>TAXI BOR MI? — ALBATTA BOR!</b>\n\n"
-        "📍 <b>OBLIQ ↔️ ANGREN</b>\n\n"
-        "Xush kelibsiz!\n"
-        "Kerakli bo‘limni tanlang:"
+        "📍 <b>OBLIQ ↔ ANGREN</b>\n\n"
+        "Xush kelibsiz!\n\n"
+        "<b>Kerakli bo‘limni tanlang:</b>"
     )
 
     await message.answer(
@@ -57,107 +62,199 @@ async def start(message: types.Message):
     )
 
 
-# =========================
-# YO‘LOVCHI
-# =========================
+@dp.callback_query(lambda c: c.data == "passenger")
+async def passenger(callback: types.CallbackQuery):
 
-@dp.message(lambda message: message.text == "👤 YO‘LOVCHI")
-async def passenger(message: types.Message):
+    await callback.answer()
 
-    await message.answer(
+    await callback.message.edit_text(
         "👤 <b>YO‘LOVCHI</b>\n\n"
         "🚕 Taksi buyurtma qilish\n"
-        "📍 Yo‘nalish: OBLIQ ↔️ ANGREN\n\n"
+        "📍 Yo‘nalish: OBLIQ ↔ ANGREN\n\n"
         "Keyingi bosqichda:\n"
         "📍 Joylashuv yuborasiz\n"
         "🏁 Qayerga borishingizni yozasiz\n"
         "💰 Narxni o‘zingiz kiritasiz\n"
         "🚕 Haydovchi topiladi.",
         parse_mode="HTML",
-        reply_markup=main_menu()
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🚕 TAKSI BUYURTMA QILISH",
+                        callback_data="order_taxi"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🔙 ORQAGA",
+                        callback_data="back"
+                    )
+                ]
+            ]
+        )
     )
 
 
-# =========================
-# HAYDOVCHI
-# =========================
+@dp.callback_query(lambda c: c.data == "driver")
+async def driver(callback: types.CallbackQuery):
 
-@dp.message(lambda message: message.text == "🚕 HAYDOVCHI")
-async def driver(message: types.Message):
+    await callback.answer()
 
-    await message.answer(
-        "🚕 <b>HAYDOVCHI PANELI</b>\n\n"
-        "📍 Yo‘nalish: <b>OBLIQ ↔️ ANGREN</b>\n\n"
-        "🟢 ONLINE / ⚪️ OFFLINE\n"
+    await callback.message.edit_text(
+        "🚕 <b>HAYDOVCHI</b>\n\n"
+        "📍 Yo‘nalish: <b>OBLIQ ↔ ANGREN</b>\n\n"
+        "🟢 ONLINE / ⚪ OFFLINE\n"
         "📋 Yangi buyurtmalar\n"
         "🚕 Faol buyurtmalar\n"
         "📜 Buyurtmalar tarixi\n"
         "💰 Daromad\n"
-        "⭐️ Reyting\n"
+        "⭐ Reyting\n"
         "👤 Profil\n\n"
-        "Haydovchi ro‘yxatdan o‘tishi keyingi bosqichda ishga tushiriladi.",
+        "Haydovchi tizimi tayyorlanmoqda.",
         parse_mode="HTML",
-        reply_markup=main_menu()
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📝 RO‘YXATDAN O‘TISH",
+                        callback_data="driver_register"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🔙 ORQAGA",
+                        callback_data="back"
+                    )
+                ]
+            ]
+        )
     )
 
 
-# =========================
-# DASTAVKA
-# =========================
+@dp.callback_query(lambda c: c.data == "delivery")
+async def delivery(callback: types.CallbackQuery):
 
-@dp.message(lambda message: message.text == "📦 DASTAVKA")
-async def delivery(message: types.Message):
+    await callback.answer()
 
-    await message.answer(
+    await callback.message.edit_text(
         "📦 <b>DASTAVKA</b>\n\n"
         "📍 Qayerdan → 🏁 Qayerga\n"
         "💰 Yetkazib berish narxini kiriting.\n\n"
-        "Yo‘nalish:\n"
-        "📍 <b>OBLIQ ↔️ ANGREN</b>\n\n"
-        "Dastavka buyurtmasi keyingi bosqichda ishga tushiriladi.",
+        "📍 <b>OBLIQ ↔ ANGREN</b>",
         parse_mode="HTML",
-        reply_markup=main_menu()
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📦 DASTAVKA BUYURTMA QILISH",
+                        callback_data="order_delivery"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🔙 ORQAGA",
+                        callback_data="back"
+                    )
+                ]
+            ]
+        )
     )
 
 
-# =========================
-# TAKLIF VA MUROJAATLAR
-# =========================
+@dp.callback_query(lambda c: c.data == "support")
+async def support(callback: types.CallbackQuery):
 
-@dp.message(lambda message: message.text == "📩 TAKLIF VA MUROJAATLAR")
-async def support(message: types.Message):
+    await callback.answer()
 
-    await message.answer(
+    await callback.message.edit_text(
         "📩 <b>TAKLIF VA MUROJAATLAR</b>\n\n"
         "Taklifingiz, savolingiz, shikoyatingiz "
-        "yoki muammoingizni shu yerga yozing.\n\n"
-        "✍️ Xabaringizni yuboring.",
+        "yoki muammoingizni yuborishingiz mumkin.",
         parse_mode="HTML",
-        reply_markup=main_menu()
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 ORQAGA",
+                        callback_data="back"
+                    )
+                ]
+            ]
+        )
     )
 
 
-# =========================
-# TIL
-# =========================
+@dp.callback_query(lambda c: c.data == "language")
+async def language(callback: types.CallbackQuery):
 
-@dp.message(lambda message: message.text == "🌐 TIL")
-async def language(message: types.Message):
+    await callback.answer()
 
-    await message.answer(
+    await callback.message.edit_text(
         "🌐 <b>TILNI TANLANG</b>\n\n"
         "🇺🇿 O‘zbekcha\n"
         "🇺🇿 Ўзбекча\n"
         "🇷🇺 Русский\n"
         "🇬🇧 English",
         parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🇺🇿 O‘zbekcha",
+                        callback_data="lang_uz"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🇺🇿 Ўзбекча",
+                        callback_data="lang_uz_cyr"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🇷🇺 Русский",
+                        callback_data="lang_ru"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🇬🇧 English",
+                        callback_data="lang_en"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🔙 ORQAGA",
+                        callback_data="back"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+@dp.callback_query(lambda c: c.data == "back")
+async def back(callback: types.CallbackQuery):
+
+    await callback.answer()
+
+    await callback.message.edit_text(
+        "🚕 <b>TAXI BOR MI? — ALBATTA BOR!</b>\n\n"
+        "📍 <b>OBLIQ ↔ ANGREN</b>\n\n"
+        "Kerakli bo‘limni tanlang:",
+        parse_mode="HTML",
         reply_markup=main_menu()
     )
 
 
-# =========================
-# BOTNI ISHGA TUSHIRISH
-# =========================
+@dp.callback_query()
+async def other_buttons(callback: types.CallbackQuery):
+
+    await callback.answer(
+        "Bu funksiya keyingi bosqichda ishga tushadi."
+    )
+
 
 async def main():
 
